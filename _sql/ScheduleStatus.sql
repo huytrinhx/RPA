@@ -1,7 +1,7 @@
 SELECT ScheduleName ,  
-	   StartResource,
-	   StartResourceStatus,
-	   NextStarted , 
+	StartResource,
+	StartResourceStatus,
+	NextStarted , 
        InstanceTime , 
        TriggerPeriod , 
        ConvertedUnit , 
@@ -117,11 +117,11 @@ FROM   (
                                    CONVERT(varchar(8), cast(startpoint AS time), 100) AS startpoint ,
                                    convertedendpoint                                  AS endpoint
                             FROM   ( 
-                                             SELECT    s.NAME AS schedulename , 
-                                                       instancetime , 
-                                                       initialtaskid ,
-													   ts.resourcename AS StartResource,
-													   rs.DisplayStatus AS StartResourceStatus,
+                                             SELECT     s.NAME AS schedulename , 
+                                                        instancetime , 
+                                                        initialtaskid ,
+							       ts.resourcename AS StartResource,
+								rs.DisplayStatus AS StartResourceStatus,
                                                        startdate, 
                                                        endpoint , 
                                                        CONVERT(varchar,RIGHT('0' + cast(st.startpoint / 3600 AS varchar), 2) + ':' + RIGHT('0' + cast((st.startpoint / 60) % 60 AS varchar), 2) + ':' + RIGHT('0' + cast(st.startpoint % 60 AS varchar), 2), 112)             AS startpoint ,
@@ -173,4 +173,4 @@ SELECT   '#*NA*#'              schedulename ,
 ORDER BY 
 		RiskScore DESC,
 		nextstarted DESC, 
-        schedulename
+              schedulename

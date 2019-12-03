@@ -4,13 +4,13 @@ Import-Module MicrosoftPowerBIMgmt.Profile
 
 
 <#
-Created By: Rajesh R Nair
+Created By: Hewitt Trinh
 Created on: 12-Mar-2019
 Purpose: This Power shell script will read the data from SQL Server with the query provided 
 and execute the same to refresh the dataset mentioned in the endpoint of the streaming dataset
 This applicable for Use Case 1, Use Case 2, Use Case 3 and Use Case 4
 
-Modified By: Rajesh R Nair
+Modified By: Hewitt Trinh
 Modified on: 1-Jul-2019
 Purpose: Update additional requirement for Usecase3
 
@@ -26,23 +26,17 @@ Purpose: Update outdated rules on SQL of WorkForce Availability and 2 add. colum
 Read the Server Details form the .ini file. the file will be kept outside the script to control the Server details configurable
 
 #>
-$filepath = "D:\BluePrism\Control.ini"
-$Logfileu1 = "D:\BluePrism\Logs\BluePrismUsecase1log.log"
-$Logfileu2 = "D:\BluePrism\Logs\BluePrismUsecase2log.log"
-$Logfileu3 = "D:\BluePrism\Logs\BluePrismUsecase3log.log"
-$Logfileu4 = "D:\BluePrism\Logs\BluePrismUsecase4log.log"
+$filepath = "~\Control.ini"
+$Logfileu1 = "~\Logs\BluePrismUsecase1log.log"
+$Logfileu2 = "~\Logs\BluePrismUsecase2log.log"
+$Logfileu3 = "~\Logs\BluePrismUsecase3log.log"
+$Logfileu4 = "~\Logs\BluePrismUsecase4log.log"
 
 $ControlParameters = Get-Content $filepath 
 
-# Read User Id password and password convertedto secure string
+# Read User Id password and password converted to secure string (Assume secure password key and aes key are created before)
 $UserId = $ControlParameters[5].Substring($ControlParameters[5].IndexOf("=") + 1)
-<#$Password = $ControlParameters[6].Substring($ControlParameters[6].IndexOf("=") + 1)
-
-[ValidateNotNullOrEmpty()]$Pass = $Password
-$secpasswd = ConvertTo-SecureString -String $Pass -AsPlainText -Force
-$credential = New-Object System.Management.Automation.PsCredential($UserId,$secpasswd)#>
-
-$Password = Get-Content D:\BluePrism\Secure\password.txt | ConvertTo-SecureString -Key (Get-Content D:\BluePrism\Secure\aes.key)
+$Password = Get-Content ~Secure\password.txt | ConvertTo-SecureString -Key (Get-Content ~\Secure\aes.key)
 $credential = New-Object System.Management.Automation.PsCredential($UserId,$Password)
 
 
@@ -87,6 +81,7 @@ function LogWriteStart
   set-content $Logfile -value $logstring
 }
 
+<# Trigger Use Case 1: Workforce Availability#>>
 
 function UseCase1refresh()
 {
@@ -98,55 +93,11 @@ function UseCase1refresh()
     
         #Query to refresh the dataset
         
-        $SqlQueryu1 = ";with DP AS 
-                    (Select 'Idle' AS DisplayStatus
-                            UNION ALL Select 'Logged Out' AS DisplayStatus
-                            UNION ALL Select 'Missing' AS DisplayStatus
-                            UNION ALL Select 'Offline' AS DisplayStatus
-                            UNION ALL Select 'Private' AS DisplayStatus
-                            UNION ALL Select 'Working' AS DisplayStatus
-                    )
-                    Select   VDI.Name,VDI.Status,DP.DisplayStatus,VDI.ResourceGroupPool
-                    from DP
-                    Left Join (
-                                SELECT VDI.name AS Name, VDI.status AS Status,VDI.DisplayStatus,CASE 
-                                WHEN GROUP_RESOURCE.groupname = 'Default' THEN VDI_POOL.PoolName
-                                ELSE GROUP_RESOURCE.groupname
-                                END AS ResourceGroupPool
-                                FROM (SELECT [resourceid]
-                                            ,[name]
-                                            ,[status]
-                                            ,[processesrunning]
-                                            ,[actionsrunning]
-                                            ,[lastupdated]
-                                            ,[AttributeID]
-                                            ,[pool]
-                                            ,[DisplayStatus]
-                                    FROM BPAResource WITH (NOLOCK)
-                                    ) AS VDI
-                                    LEFT JOIN
-                                    (SELECT resourceid AS PoolId, name AS PoolName
-                                    FROM BPAResource WITH (NOLOCK)
-                                    ) AS VDI_POOL ON VDI.[pool] = VDI_POOL.PoolId
-                                    LEFT JOIN (SELECT [id],
-                                         [groupname]       
-                                    FROM [BPVGroupedResources] WITH (NOLOCK)) GROUP_RESOURCE ON VDI.resourceid = GROUP_RESOURCE.id
-                                    WHERE 
-                                    (GROUP_RESOURCE.groupname = 'Default' AND VDI_POOL.PoolId IS NOT NULL)
-                                    OR
-                                    (GROUP_RESOURCE.groupname <> 'Default')) VDI ON DP.DisplayStatus=VDI.DisplayStatus
-                                                              WHERE VDI.ResourceGroupPool <> '__UnGrouped and UnPooled VDIs'
-                                                            
-UNION ALL
-SELECT '#*NA*#' as Name, '#*NA*#' as Status, '#*NA*#' as DisplayStatus, '#*NA*#' as ResourceGroupPool
-
-ORDER BY ResourceGroupPool";
+        $SqlQueryu1 = "~\_sql\WorkForceAvailability.sql";
 
             #Set the query
             $SqlCommandu1 = New-Object -TypeName System.Data.SqlClient.SqlCommand;
             $SqlCommandu1.CommandText = $SqlQueryu1;
-            
-            
             $SqlCommandu1.Connection = $SqlConnection;
         
         
@@ -177,18 +128,18 @@ ORDER BY ResourceGroupPool";
             
 
 
-            #QA
+            #prod
             $endpointu1 = "https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/b4981f65-3a95-46a8-bcbd-91f611b7683e/rows?key=mvf9SSis7OuJ5FgDssenjJsuGpgL%2FRHT%2F2wdaXCsxpZ3Pjy6Pet5wdrP%2BI%2B9mYoeBX99MAPnd8yD7GWeVK58uw%3D%3D"
 
-            #actual
+            #qa
             #$endpointu1 = "https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/4e363e09-7a32-4579-bf96-e98da193d4a4/rows?key=ebc6KHPiGxqBm43K%2Ftx6nJ4gTn9%2FAw2jhaDj3EU%2FaJpEPZB5ef%2FNPx9yF1V1tMR0nYSOF6xTLBcROQ1wHeo9cA%3D%3D"
 
-            #working
+            #dev
             #$endpointu1  = "https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/ea585ac0-95c3-4b8d-876d-c51b2c61bb4e/rows?key=XG6X5nGbEoQgKNO5v0XdyvuQknhldEGIo0PwVjxHZqxcC71mTGGlRuboDZZG34I3zk6qqYc4RzgCnYmjSxyNrg%3D%3D"
 
                        
             Remove-PowerBIRow -Datasetid b4981f65-3a95-46a8-bcbd-91f611b7683e -TableName RealTimeData
-            #working
+            #dev
             #Remove-PowerBIRow -Datasetid ea585ac0-95c3-4b8d-876d-c51b2c61bb4e -TableName RealTimeData
 
             $Starttime = Get-Date
@@ -197,14 +148,10 @@ ORDER BY ResourceGroupPool";
             Invoke-RestMethod -Method Post -Uri "$endpointu1" -Body ($SqlDatau1)
             $Starttime = Get-Date
             LogWrite $Logfileu1 "Event: Refresh ends eventDate: $Starttime"
-
-            #sleep for 10 Sec
-            #Start-Sleep $Interval         
+         
 
             $SqlAdapteru1.Dispose();        
-            $SqlCommandu1.Dispose();
-            #$SqlConnection.Close();   
-            #$SqlConnection.Dispose();   
+            $SqlCommandu1.Dispose();   
             [System.GC]::Collect();
             
 
@@ -218,25 +165,15 @@ ORDER BY ResourceGroupPool";
         $FailedItem = $_.Exception.ItemName
         $Starttime = Get-Date
         LogWrite $Logfileu1 "Event: Logging Error Catch Block eventDate: $Starttime"
-        LogWrite $Logfileu1 "Error Message: $ErrorMessage"
-        #$SqlAdapteru1.Dispose();  
-        #$SqlCommandu1.Dispose();
-        #$SqlConnection.Close();   
-        #$SqlConnection.Dispose(); 
+        LogWrite $Logfileu1 "Error Message: $ErrorMessage" 
         [System.GC]::Collect();
-       # Break
 
     }
 
 }
 
 
-
-
-
-
-
-<#Trigger Use case 3 #>
+<#Trigger Use Case 3: Running Stages #>
 
 function UseCase3Refresh()
 {
@@ -252,92 +189,15 @@ function UseCase3Refresh()
            
             #Query to refresh the dataset
 
-            $SqlQueryu3 = "select  Process
-              ,Resource
-              --,startdatetime
-              ,LastUpdated
-              ,LatestStage
-			  --,Duration1 duration1
-			  ,Duration
-			  ,case when DurationInminutes<0 then 0 else DurationInminutes end DurationInminutes
-              , StatusId  
-              , case when StatusId = 0 then 1 else 0 end StatusId0
-              , case when StatusId = 1 then 1 else 0 end StatusId1
-			  ,Pendingruntime
-			  ,ProcessDurationInminutes
-			  from
-			  (
-select   Process
-              ,Resource
-              --,startdatetime
-              ,LastUpdated
-              ,LatestStage
-			  ,Duration duration1
-                       ,CASE WHEN DATEDIFF(SECOND,isnull([lastupdated],[startdatetime]),getdate()) > 0  
-                        THEN Duration
-                        ELSE '00:00:00' 
-                        END AS Duration
-              ,cast(substring(Duration,1,2) AS int)*60+
-         cast(substring(Duration,4,2) AS int)+ 
-         cast(substring(Duration,7,2) AS int)/60.0 AS DurationInminutes,
-         StatusId,
-		 Pendingruntime,
-         cast(substring(Pendingruntime,1,2) AS int)*60+
-         cast(substring(Pendingruntime,4,2) AS int)+ 
-         cast(substring(Pendingruntime,7,2) AS int)/60.0 AS ProcessDurationInminutes
-FROM
-(
-       SELECT [processname] As Process
-                                ,[runningresourcename] AS Resource
-                                ,[startdatetime] AS startdatetime
-                                ,[lastupdated] AS LastUpdated
-                                ,[laststage]  AS LatestStage
-                                ,CASE WHEN lastupdated is null
-                                                       THEN RIGHT('0' + CAST(DATEDIFF(SECOND, [startdatetime], GETDATE()) / 3600 AS VARCHAR),2) + ':' +
-                                                                RIGHT('0' + CAST((DATEDIFF(SECOND,[startdatetime], GETDATE()) % 3600)/60 AS VARCHAR),2) + ':' +
-                                                                RIGHT('0' + CAST(DATEDIFF(SECOND, [startdatetime], GETDATE()) % 60 AS VARCHAR),2) 
-                                                        ELSE
-                                                                RIGHT('0' + CAST(DATEDIFF(SECOND, [lastupdated], GETDATE()) / 3600 AS VARCHAR),2) + ':' +
-                                                                RIGHT('0' + CAST((DATEDIFF(SECOND,[lastupdated], GETDATE()) % 3600)/60 AS VARCHAR),2) + ':' +
-                                                                RIGHT('0' + CAST(DATEDIFF(SECOND, [lastupdated], GETDATE()) % 60 AS VARCHAR),2) 
-                                                        END AS Duration ,
-                                                        statusid AS StatusId  ,
-								RIGHT('0' + CAST(DATEDIFF(SECOND, [startdatetime], GETDATE()) / 3600 AS VARCHAR),2) + ':' +
-                                                                RIGHT('0' + CAST((DATEDIFF(SECOND,[startdatetime], GETDATE()) % 3600)/60 AS VARCHAR),2) + ':' +
-                                                                RIGHT('0' + CAST(DATEDIFF(SECOND, [startdatetime], GETDATE()) % 60 AS VARCHAR),2) AS Pendingruntime                                                    
-       FROM [BPVSessionInfo] with (nolock) 
-       WHERE statusid in( '1','0')
-)a  
---where DATEDIFF(SECOND,isnull([lastupdated],[startdatetime]),getdate()) < 0  
---where process='U-P-S2C-05-Ariba-Create Ariba Sourcing Projects-Process 05'
-) aa    
-UNION ALL
-select  '#*NA*#' Process
-              ,'NA' Resource
-              --,startdatetime
-              ,'1900-01-01 00:00:00.000' LastUpdated
-              ,'NA'LatestStage
-			  --,Duration1 duration1
-			  ,'NA' Duration
-			  ,0.0 DurationInminutes
-              , 1 StatusId  
-              , 0  StatusId0
-              , 0  StatusId1
-			  ,'NA' Pendingruntime
-			  ,0 ProcessDurationInminutes                        
-ORDER BY DurationInminutes DESC";
+            $SqlQueryu3 = "~\_sql\ScheduleStatus.sql";
 
             #Set the query
             $SqlCommandu3 = New-Object -TypeName System.Data.SqlClient.SqlCommand;
             $SqlCommandu3.CommandText = $SqlQueryu3;
-
             $SqlCommandu3.Connection = $SqlConnection;
-                
-            #Open and execute the query
-            #$SqlConnection.Open();
+            
 
-            #This connection end point to be replaced for each report
-            $endpointu3 ="https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/b9e5ac8f-44aa-4408-961b-b133214b708b/rows?key=t23XD%2F985k1RRypo3kEWUMFrm37D40IoMXCk%2FNWtUZ3Q2096RvXcZW7wekFAR3pb%2BIAdvmBnMyjnDg6MwKpEtQ%3D%3D";
+            
             $Starttime = Get-Date
             LogWrite $Logfileu3 "Event: Refresh starts eventDate: $Starttime"
 
@@ -364,7 +224,8 @@ ORDER BY DurationInminutes DESC";
             
             
             
-            
+            #This connection end point to be replaced for each report
+            $endpointu3 ="https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/b9e5ac8f-44aa-4408-961b-b133214b708b/rows?key=t23XD%2F985k1RRypo3kEWUMFrm37D40IoMXCk%2FNWtUZ3Q2096RvXcZW7wekFAR3pb%2BIAdvmBnMyjnDg6MwKpEtQ%3D%3D";
 
             Remove-PowerBIRow -Datasetid b9e5ac8f-44aa-4408-961b-b133214b708b -TableName RealTimeData
             #echo "Refresh"
@@ -372,15 +233,10 @@ ORDER BY DurationInminutes DESC";
             Invoke-RestMethod -Method Post -Uri "$endpointu3" -Body ($SqlDatau3)
 
             $Starttime = Get-Date
-            LogWrite $Logfileu3 "Event: Refresh ends eventDate: $Starttime"
-
-            #sleep for 10 Sec
-           # Start-Sleep $Interval         
+            LogWrite $Logfileu3 "Event: Refresh ends eventDate: $Starttime"         
 
             $SqlAdapteru3.Dispose();        
-            $SqlCommandu3.Dispose();
-            #$SqlConnection.Close();   
-            #$SqlConnection.Dispose();   
+            $SqlCommandu3.Dispose();   
             [System.GC]::Collect();
                                                   
     }
@@ -392,18 +248,13 @@ ORDER BY DurationInminutes DESC";
         $FailedItem = $_.Exception.ItemName
         $Starttime = Get-Date
         LogWrite $Logfileu3 "Event: Logging Error Catch Block eventDate: $Starttime"
-        LogWrite $Logfileu3 "Error Message: $ErrorMessage"
-        #$SqlAdapteru3.Dispose();        
-        #$SqlCommandu3.Dispose();
-        #$SqlConnection.Close();   
-        #$SqlConnection.Dispose();   
+        LogWrite $Logfileu3 "Error Message: $ErrorMessage"   
         [System.GC]::Collect();
-        #Break
     }
 }
 
 
-
+<# Trigger Use Case 4: Termination Count#>
 
 function UseCase4refresh()
 {
@@ -415,45 +266,7 @@ function UseCase4refresh()
     
         #Query to refresh the dataset
         
-        $SqlQueryu4 = "SELECT count(SessionNumber)SessionNumber, ProcessName, RunningResourceName
-FROM
-(
-       Select  TERMINATED_SESSIONS.sessionnumber As SessionNumber, TERMINATED_SESSIONS.processname As ProcessName, TERMINATED_SESSIONS.runningresourcename as RunningResourceName, convert(varchar(30),TERMINATED_SESSIONS.startdatetime,121) as StartDatetime,
-              convert(varchar(30),TERMINATED_SESSIONS.enddatetime,121) as EndDatetime,  
-              ST.[description] as Description,
-              (SELECT '[STAGE: ' + SL.stagename + ' | RESULT: ' + CONVERT(VARCHAR(255), SL.result) + '];  '
-              FROM [dbo].[BPASessionLog_NonUnicode] SL with (nolock)
-              WHERE SL.sessionnumber = TERMINATED_SESSIONS.sessionnumber
-                     AND SL.result LIKE '%ERROR%'
-              FOR XML PATH(''))AS Result ,lastupdated 
-       From
-    (
-              SELECT [sessionnumber]
-        ,[processname]
-        ,[runningresourcename]
-        ,[startdatetime]
-        ,[starttimezoneoffset]
-        ,[enddatetime]
-        ,[endtimezoneoffset]
-        ,[lastupdated]
-        ,[statusid]
-              FROM [dbo].[BPVSessionInfo] with (nolock) 
-              Where 
-        DATEDIFF(HOUR, [lastupdated], GETDATE()) <= 4
-        AND 
-              (statusid = 2 OR statusid = 3) 
-        And lastupdated In (Select Max(lastupdated) From [dbo].[BPVSessionInfo] WITH (NOLOCK) Group by sessionid)
-    ) AS TERMINATED_SESSIONS
-       JOIN BPAStatus ST WITH (NOLOCK) ON TERMINATED_SESSIONS.statusid = ST.statusid
-
-       UNION ALL
-
-       SELECT 0 as SessionNumber, 'NA' as ProcessName, 'NA' as RunningResourceName, '1900-01-01 00:00:00.000' as StartDatetime, '1900-01-01 00:00:00.000' as EndDatetime
-       ,'NoData' as Description, 'NoData' as Result, '1900-01-01 00:00:00.000' as lastupdated
-
-)tsessions
-GROUP BY ProcessName,RunningResourceName
-ORDER BY SessionNumber DESC"
+        $SqlQueryu4 = "~\_sql\Moving4HourTerminationCount.sql"
 
             #Set the query
             $SqlCommandu4 = New-Object -TypeName System.Data.SqlClient.SqlCommand;
@@ -477,7 +290,7 @@ ORDER BY SessionNumber DESC"
             $ProcessName = $DataSetu4.Tables[0].Rows[0].ItemArray[1]
 
          
-            #Convert the dataset to Jason
+            #Convert the dataset to Json
             $SqlDatau4= ($DataSetu4.Tables[0] | select $DataSetu4.Tables[0].Columns.ColumnName ) | ConvertTo-Json
             
             
@@ -493,18 +306,9 @@ ORDER BY SessionNumber DESC"
 
             #QA
             $endpointu4 = "https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/73247372-9b26-40d0-b652-e5b1747911b0/rows?key=hXEpAHn7C2oztY4n%2BW3r7IA2foJ2SkrKartVMsNg4IxkWnslsHrkYMZTTG3xmiLLlbH89%2BGyba6Y5qhqRVlHVQ%3D%3D"
-
-            #actual
-            #$endpointu1 = "https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/4e363e09-7a32-4579-bf96-e98da193d4a4/rows?key=ebc6KHPiGxqBm43K%2Ftx6nJ4gTn9%2FAw2jhaDj3EU%2FaJpEPZB5ef%2FNPx9yF1V1tMR0nYSOF6xTLBcROQ1wHeo9cA%3D%3D"
-
-            #working
-            #$endpointu1  = "https://api.powerbi.com/beta/ca56a4a5-e300-406a-98ff-7e36a0baac5b/datasets/ea585ac0-95c3-4b8d-876d-c51b2c61bb4e/rows?key=XG6X5nGbEoQgKNO5v0XdyvuQknhldEGIo0PwVjxHZqxcC71mTGGlRuboDZZG34I3zk6qqYc4RzgCnYmjSxyNrg%3D%3D"
-
-                       
+              
             Remove-PowerBIRow -Datasetid 73247372-9b26-40d0-b652-e5b1747911b0 -TableName RealTimeData
-            #working
-            #Remove-PowerBIRow -Datasetid ea585ac0-95c3-4b8d-876d-c51b2c61bb4e -TableName RealTimeData
-
+            
             $Starttime = Get-Date
             LogWrite $Logfileu4 "Event: Refresh starts eventDate: $Starttime"
 
@@ -516,8 +320,6 @@ ORDER BY SessionNumber DESC"
 
             $SqlAdapteru4.Dispose();        
             $SqlCommandu4.Dispose();
-            #$SqlConnection.Close();   
-            #$SqlConnection.Dispose();   
             [System.GC]::Collect();
             
 
@@ -532,19 +334,14 @@ ORDER BY SessionNumber DESC"
         $Starttime = Get-Date
         LogWrite $Logfileu4 "Event: Logging Error Catch Block eventDate: $Starttime"
         LogWrite $Logfileu4 "Error Message: $ErrorMessage"
-        #$SqlAdapteru4.Dispose();  
-        #$SqlCommandu4.Dispose();
-        #$SqlConnection.Close();   
-        #$SqlConnection.Dispose(); 
         [System.GC]::Collect();
-        #Break
-
+        
     }
 
 }
 
 
-
+<# Trigger Use Case 2: Schedule Status#>
 function UseCase2refresh()
 {
     
@@ -555,184 +352,7 @@ function UseCase2refresh()
     
         #Query to refresh the dataset
         
-        $SqlQueryu2 = "
-SELECT ScheduleName ,  
-	   StartResource,
-	   StartResourceStatus,
-	   NextStarted , 
-       InstanceTime , 
-       TriggerPeriod , 
-       ConvertedUnit , 
-       StartPoint , 
-       EndPoint , 
-          CASE 
-              WHEN convertedunit='Minutes' 
-              AND    CONVERT(VARCHAR(10), getdate(), 121) + ' ' + RIGHT(nextstarted, 7) <= CONVERT(VARCHAR(10), getdate(), 121) + ' ' + endpoint
-              AND    CONVERT(VARCHAR(11), nextstarted, 121) = CONVERT(VARCHAR(11), instancetime, 121) THEN
-                     CASE 
-                            WHEN (Datediff(mi, dateadd(mi, 5,instancetime) , nextstarted)/triggerperiod)-1 <= 0 OR StartResourceStatus = 'Working' THEN 0
-                            ELSE (Datediff(mi, dateadd(mi, 5,instancetime), nextstarted)        /triggerperiod)-1
-                     END 
-              WHEN convertedunit='Minutes' 
-              AND    CONVERT(VARCHAR(10), getdate(), 121) + ' ' + RIGHT(nextstarted, 7) > CONVERT(VARCHAR(10), getdate(), 121) + ' ' + endpoint THEN 0
-              WHEN convertedunit='Hours' 
-              AND    CONVERT(VARCHAR(10), getdate(), 121) + ' ' + RIGHT(nextstarted, 7) <= CONVERT(VARCHAR(10), getdate(), 121) + ' ' + endpoint
-              AND    CONVERT(VARCHAR(11), nextstarted, 121) = CONVERT(VARCHAR(11), instancetime, 121) THEN
-                     CASE 
-                            WHEN ( 
-                                          Datediff(hour, dateadd(mi, 5,instancetime), nextstarted)/triggerperiod)-1 <=0 OR StartResourceStatus = 'Working' THEN 0
-                            ELSE (Datediff(hour, dateadd(mi, 5,instancetime), nextstarted)        /triggerperiod)-1
-                     END 
-              WHEN convertedunit='Hours' 
-              AND    CONVERT(VARCHAR(10), getdate(), 121) + ' ' + RIGHT(nextstarted, 7) > CONVERT(VARCHAR(10), getdate(), 121) + ' ' + endpoint THEN 0
-              ELSE 0 
-       END RiskScore , 
-       CASE 
-              WHEN initialtaskid= 0 or nextstarted is null THEN 'TURNED OFF'
-       END ScheduleStatus 
-FROM   ( 
-              SELECT schedulename,
-					 StartResource,
-					 StartResourceStatus,
-                     next nextstarted , 
-                     instancetime , 
-                     triggerperiod , 
-                     initialtaskid , 
-                     startdate , 
-                     convertedunit , 
-                     startpoint , 
-                     endpoint 
-              FROM   ( 
-                            SELECT a.schedulename,
-								   StartResource,
-								   StartResourceStatus,
-                                   initialtaskid, 
-                                   startdate, 
-                                   CASE 
-                                          WHEN convertedunit='Minutes' 
-                                          AND    getdate() BETWEEN CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' ' +startpoint)) AND    CONVERT(datetime, CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint)
-                                          AND    dateadd(mi, triggerperiod, getdate()) < (CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint) THEN
-										                                                   CONVERT(varchar,dateadd(mi, ceiling((datediff(ss, CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ startpoint)), getdate())/(1.0*triggerperiod*60))) * triggerperiod, CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ startpoint))), 100) 
-                                          WHEN convertedunit='Minutes' 
-                                          AND    datediff(ss, getdate(), CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ startpoint))) >0 THEN
-                                                 CONVERT(varchar,CONVERT(datetime, CONVERT (varchar(10), getdate(), 101) + ' ' + startpoint), 100)
-                                          WHEN convertedunit='Minutes' 
-                                          AND    datediff(ss, getdate(), CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint))) <0 
-                                          OR     ( 
-                                                        dateadd(mi, triggerperiod, getdate()) > (CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint)) THEN CONVERT(varchar,CONVERT(datetime, CONVERT (varchar(10), dateadd(dd, 1, getdate()), 101) + ' ' + startpoint), 100)
-                                          WHEN convertedunit='Hours' 
-                                          AND    getdate() BETWEEN CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' ' +startpoint)) AND    CONVERT(datetime, CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint)
-                                          AND    dateadd(hh, triggerperiod, getdate()) < (CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint)
-                                          THEN CONVERT(varchar,dateadd(hour, ceiling((datediff(ss, CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ startpoint)), getdate())/(1.0*triggerperiod*3600))) * triggerperiod, CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ startpoint))), 100) 
-                                          WHEN convertedunit='Hours' 
-                                          AND    datediff(ss, getdate(), CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ startpoint))) >0 THEN 
-                                                 CONVERT(varchar,CONVERT(datetime, CONVERT (varchar(10), getdate(), 101) + ' ' + startpoint), 100)
-                                          WHEN convertedunit='Hours' 
-                                          AND    datediff(ss, getdate(), CONVERT(datetime,(CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint))) <0 
-                                          OR     ( 
-                                                        dateadd(hh, triggerperiod, getdate()) > (CONVERT(varchar(10), getdate(), 121) + ' '+ convertedendpoint)) THEN CONVERT(varchar,CONVERT(datetime, CONVERT (varchar(10), dateadd(dd, 1, getdate()), 101) + ' ' + startpoint), 100)
-                                          WHEN convertedunit='Days' 
-                                          AND    datediff(ss, CONVERT(datetime,(CONVERT(varchar(10), getdate(),121) + ' '+ right(convert(varchar(30),startdate,121),12))), getdate()) >0 THEN CONVERT(varchar(30), dateadd(day, 1, CONVERT(datetime,(CONVERT(varchar(10), getdate(),121) + ' '+ right(convert(varchar(30),startdate,121),12)))), 100) 
-                                          WHEN convertedunit='Days' 
-                                          AND    datediff(ss, CONVERT(datetime,(CONVERT(varchar(10), getdate(),121) + ' '+ right(convert(varchar(30),startdate,121),12))), getdate()) <=0 THEN CONVERT(varchar(20), CONVERT(datetime,(CONVERT(varchar(10), getdate(),121) + ' '+ right(convert(varchar(30),startdate,121),12))), 100) 
-                                         
-                                                                       WHEN convertedunit='Weeks' 
-                                          AND    datepart(dw, startdate)= datepart(dw, getdate())
-                                          AND    ( 
-                                                        CONVERT(varchar(10), getdate(), 121) + ' ' + RIGHT(CONVERT(varchar(30), startdate, 121), 12)) > getdate() THEN CONVERT(varchar,dateadd(ww, datediff(ww, startdate, getdate()), startdate), 100)
-                                          WHEN convertedunit='Weeks' 
-                                          AND    datepart(dw, startdate)= datepart(dw, getdate())
-                                          AND    ( 
-                                                        CONVERT(varchar(10), getdate(), 121) + ' ' + RIGHT(CONVERT(varchar(30), startdate, 121), 12)) <= getdate() THEN CONVERT(varchar,dateadd(ww, datediff(ww, startdate, getdate())+1, startdate), 100)
-                                          WHEN convertedunit='Weeks' 
-                                          AND    datepart(dw, startdate)> datepart(dw, getdate()) THEN CONVERT(varchar,dateadd(ww, datediff(ww, startdate, getdate()), startdate), 100)
-                                          WHEN convertedunit='Weeks' 
-                                          AND    datepart(dw, startdate)< datepart(dw, getdate()) THEN CONVERT(varchar,dateadd(ww, datediff(ww, startdate, getdate())+1, startdate), 100)
-                                          
-                                                                       
-                                                                     WHEN convertedunit='BiWeeks' 
-                                          AND    datepart(dw, startdate)= datepart(dw, getdate())
-                                          AND    ( 
-                                                        CONVERT(varchar(10), getdate(), 121) + ' ' + RIGHT(CONVERT(varchar(30), startdate, 121), 12)) > getdate() THEN CONVERT(varchar,dateadd(ww, (datediff(dd, startdate, getdate())/14.0)*2, startdate), 100)
-                                          WHEN convertedunit='BiWeeks' 
-                                          AND    datepart(dw, startdate)= datepart(dw, getdate())
-                                          AND    ( 
-                                                        CONVERT(varchar(10), getdate(), 121) + ' ' + RIGHT(CONVERT(varchar(30), startdate, 121), 12)) <= getdate() THEN CONVERT(varchar,dateadd(ww, ((datediff(dd, startdate, getdate())/14.0)*2)+2, startdate), 100)
-                                          WHEN convertedunit='BiWeeks' 
-                                          AND    datepart(dw, startdate)> datepart(dw, getdate()) THEN CONVERT(varchar,dateadd(ww, ((datediff(dd, startdate, getdate())/14.0)*2)+1, startdate), 100)
-                                                                                                                
-                                                                       WHEN convertedunit='BiWeeks' 
-                                          AND    datepart(dw, startdate)< datepart(dw, getdate()) THEN CONVERT(varchar,dateadd(ww, ((datediff(dd, startdate, getdate())/14.0)*2)+2, startdate), 100)
-                                                                                                                
-                                          WHEN convertedunit='Months' 
-                                          AND    dateadd(mm, datediff(mm, startdate, getdate()), startdate) >= getdate() THEN CONVERT(varchar,dateadd(mm, datediff(mm, startdate, getdate()), startdate), 100)
-                                          WHEN convertedunit='Months' 
-                                          AND    dateadd(mm, datediff(mm, startdate, getdate()), startdate) < getdate() THEN CONVERT(varchar,dateadd(mm, datediff(mm, startdate, getdate())+1, startdate), 100)
-                                   END                                                     next ,
-                                   CONVERT(varchar,cast(instancetime AS datetime), 100) AS instancetime ,
-                                   triggerperiod , 
-                                   convertedunit , 
-                                   CONVERT(varchar(8), cast(startpoint AS time), 100) AS startpoint ,
-                                   convertedendpoint                                  AS endpoint
-                            FROM   ( 
-                                             SELECT    s.NAME AS schedulename , 
-                                                       instancetime , 
-                                                       initialtaskid ,
-													   ts.resourcename AS StartResource,
-													   rs.DisplayStatus AS StartResourceStatus,
-                                                       startdate, 
-                                                       endpoint , 
-                                                       CONVERT(varchar,RIGHT('0' + cast(st.startpoint / 3600 AS varchar), 2) + ':' + RIGHT('0' + cast((st.startpoint / 60) % 60 AS varchar), 2) + ':' + RIGHT('0' + cast(st.startpoint % 60 AS varchar), 2), 112)             AS startpoint ,
-                                                       CONVERT(varchar(7), cast(RIGHT('0' + cast(st.endpoint / 3600 AS varchar), 2) + ':' + RIGHT('0' + cast((st.endpoint / 60) % 60 AS varchar), 2) + ':' + RIGHT('0' + cast(st.endpoint % 60 AS varchar), 2) AS time), 100) AS convertedendpoint ,
-                                                       CASE st.unittype 
-                                                                 WHEN 1 THEN 'Hours' 
-                                                                 WHEN 2 THEN 'Days' 
-                                                                 WHEN 3 THEN 'Weeks' 
-                                                                 WHEN 4 THEN 'Months' 
-                                                                 WHEN 5 THEN 'Biweeks' 
-                                                                 WHEN 6 THEN 'Minutes' 
-                                                                 ELSE '' 
-                                                       END         AS convertedunit , 
-                                                       st.[period] AS triggerperiod 
-                                             FROM      bpaschedule s WITH (nolock) 
-                                             LEFT JOIN bpascheduletrigger st WITH (nolock) 
-                                             ON        s.id = st.scheduleid 
-											 LEFT JOIN bpatasksession ts WITH (nolock)
-											 ON        s.initialtaskid = ts.taskid
-											 LEFT JOIN bparesource rs WITH (nolock)
-											 ON        ts.resourcename = rs.name
-                                             LEFT JOIN bpaschedulelog sl WITH (nolock) 
-                                             ON        s.id = sl.scheduleid 
-                                             AND       sl.heartbeat = 
-                                                       ( 
-                                                              SELECT max(sl2.heartbeat) 
-                                                              FROM   bpaschedulelog sl2 WITH (nolock)
-                                                              WHERE  sl2.scheduleid = sl.scheduleid)
-                                             WHERE     s.NAME IS NOT NULL 
-                                             AND       s.retired = 0 
-                                             AND       st.priority = 0 
-                                             AND       ( 
-                                                                 st.enddate IS NULL 
-                                                      OR        st.enddate > getdate()) )a)aa)aaa
-
-UNION ALL 
-SELECT   '#*NA*#'              schedulename ,
-		 '#*NA*#'              StartResource ,
-		 '#*NA*#'              StartResourceStatus ,
-         '1900-01-01 00:00:00' nextstarted , 
-         '1900-01-01 00:00:00' instancetime , 
-         0                     triggerperiod , 
-         '#*NA*#'              convertedunit , 
-         '#*NA*#'              startpoint , 
-         '#*NA*#'              endpoint , 
-         -1                    riskscore , 
-         '#*NA*#'              schedulestatus 
-
-ORDER BY 
-		RiskScore DESC,
-		nextstarted DESC, 
-        schedulename";
-
+        $SqlQueryu2 = "~\_sql\ScheduleStatus.sql"
             #Set the query
             $SqlCommandu2 = New-Object -TypeName System.Data.SqlClient.SqlCommand;
             $SqlCommandu2.CommandText = $SqlQueryu2;
@@ -821,11 +441,7 @@ ORDER BY
 }
 
 
-
-
-
-
-<#Block to trigger Use cases #>
+<#MAIN #>
 $n=1
 $Count = 1
 DO
@@ -867,7 +483,6 @@ DO
 
 
     $n=0
-    #17280
     if ($Count -eq 17280)
     {
     
