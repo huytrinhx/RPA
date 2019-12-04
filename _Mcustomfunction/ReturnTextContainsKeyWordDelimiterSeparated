@@ -1,0 +1,21 @@
+let func =  
+ (BigString as text, SearchText as text, Delimiter as text) as logical =>
+let
+    TextToList = List.Buffer(Text.Split(SearchText, Delimiter)),
+    FilterList = List.Select(TextToList, each _ <> ""),
+    Result =  List.AnyTrue(List.Transform(FilterList, (substring) => Text.Contains(BigString, substring, Comparer.OrdinalIgnoreCase)))
+in
+    Result
+, documentation = [
+Documentation.Name =  " NIGOReferralDetect
+", Documentation.Description = " Returns True or False if any of strings or substring delimited by delimitor appears in the input text
+", Documentation.LongDescription = "
+", Documentation.Category = "Text Detection
+", Documentation.Source = "
+", Documentation.Author = " Hewitt Trinh
+", Documentation.Examples = {[Description =  " Detect occurance of strings in a string
+", Code = " NIGOReferralDetect(""Business Exception: Claims number is invalid"",""business;invalid"","";"")
+", Result = " ""True""
+"]}] 
+in 
+Value.ReplaceType(func, Value.ReplaceMetadata(Value.Type(func), documentation))

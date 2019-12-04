@@ -1,0 +1,20 @@
+let func =  
+ (BigString as text, BeginningDelimiter as text, EndingDelimiter as text) as text =>
+let
+    BeginningString = Text.BeforeDelimiter(BigString, BeginningDelimiter, if List.Count(Text.Split(BigString, BeginningDelimiter)) > 2 then 0 else 3 ),
+    EndingString = Text.AfterDelimiter(BigString, EndingDelimiter, if BeginningDelimiter = EndingDelimiter then 1 else if Text.Length(BeginningString) > 0 then 0 else 10),
+    Result = Text.Trim(BeginningString) & " " & Text.Trim(EndingString)
+    in Result
+, documentation = [
+Documentation.Name =  " RemoveTextBetweenPairDelimiters
+", Documentation.Description = " Assume any input delimiter has an identical closing delimiter, the function seeks to remove the content between those 2 delimiters while keep the delimiters. Ending delimiter is defined as the one next the first occurence of beginning delimiter
+", Documentation.LongDescription = "
+", Documentation.Category = "Text Detection
+", Documentation.Source = "
+", Documentation.Author = " Hewitt Trinh
+", Documentation.Examples = {[Description =  " 
+", Code = " RemoveTextBetweenPairDelimiters(""Claim Number (ABC123) is invalid"",""("","")
+", Result = " ""Claims number () is invalid""
+"]}] 
+in 
+Value.ReplaceType(func, Value.ReplaceMetadata(Value.Type(func), documentation))
