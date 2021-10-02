@@ -1,0 +1,22 @@
+let func =  
+ (BigString as text, BigStringDelimiter as text, SearchText as text, Delimiter as text) as text =>
+let
+    BigStringToList = List.Buffer(Text.Split(BigString, BigStringDelimiter)),
+    BigStringFilterList = List.Select(BigStringToList, each _ <> ""),
+    Result = List.Accumulate(BigStringFilterList, "", (state, current) => 
+                            if ReturnTextContainsKeyWordDelimiterSeparated(current, SearchText, Delimiter) 
+                            then state&current else state)
+    in Result
+, documentation = [
+Documentation.Name =  " NIGOReferralTagDetect
+", Documentation.Description = " Returns the tag if any of strings or substring delimited by delimitor appears in the tag after split by a delimiter
+" , Documentation.LongDescription = "
+", Documentation.Category = "Text Detection
+", Documentation.Source = "
+", Documentation.Author = " Hewitt Trinh
+", Documentation.Examples = {[Description =  " Detect occurance of strings in a bigger string, return the bigger string that contains the keywords
+" , Code = " NIGOReferralTagDetect(""Business Exception: Claims number is invalid;System Exception"","";"", ""business;invalid"","";"")
+", Result = " ""Business Exception: Claims number is invalid""
+"]}] 
+in 
+Value.ReplaceType(func, Value.ReplaceMetadata(Value.Type(func), documentation))
